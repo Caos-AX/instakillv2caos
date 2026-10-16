@@ -1,192 +1,172 @@
--- ANTI-ATTACK GUI
--- LocalScript em StarterPlayerScripts
--- Requer ProtectionEvent e ProtectionServer no servidor
-
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
-local event = ReplicatedStorage:WaitForChild("ProtectionEvent")
+local enabled = false
+local RANGE = 10000000
+local COOLDOWN = 0
+local lastAttack = 0
 
-local protectionOn = true
-local alertsOn = true
-
+-- GUI
 local gui = Instance.new("ScreenGui")
-gui.Name = "AntiAttackGui"
+gui.Name = "InstantKillGui"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
+-- Painel principal
 local panel = Instance.new("Frame")
-panel.Size = UDim2.fromOffset(270, 240)
-panel.Position = UDim2.new(0.5, -135, 0.5, -120)
-panel.BackgroundColor3 = Color3.fromRGB(25, 29, 39)
+panel.Size = UDim2.fromOffset(220, 150)
+panel.Position = UDim2.new(0.5, -110, 0.5, -75)
+panel.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 panel.BorderSizePixel = 0
-panel.Active = true
 panel.Parent = gui
 
-Instance.new("UICorner", panel).CornerRadius =
-    UDim.new(0, 12)
+local panelCorner = Instance.new("UICorner")
+panelCorner.CornerRadius = UDim.new(0, 12)
+panelCorner.Parent = panel
 
-local function label(text, y, height, color)
-    local obj = Instance.new("TextLabel")
-    obj.Size = UDim2.new(1, -20, 0, height)
-    obj.Position = UDim2.fromOffset(10, y)
-    obj.BackgroundTransparency = 1
-    obj.Text = text
-    obj.TextColor3 = color or Color3.new(1, 1, 1)
-    obj.Font = Enum.Font.GothamBold
-    obj.TextScaled = true
-    obj.Parent = panel
-    return obj
-end
+-- Título
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.fromOffset(0, 5)
+title.BackgroundTransparency = 1
+title.Text = "INSTANT KILL"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+title.Parent = panel
 
-local function button(text, y, color)
-    local obj = Instance.new("TextButton")
-    obj.Size = UDim2.new(1, -20, 0, 38)
-    obj.Position = UDim2.fromOffset(10, y)
-    obj.BackgroundColor3 = color
-    obj.TextColor3 = Color3.new(1, 1, 1)
-    obj.Text = text
-    obj.Font = Enum.Font.GothamBold
-    obj.TextScaled = true
-    obj.BorderSizePixel = 0
-    obj.Parent = panel
+-- Botão ON/OFF
+local toggle = Instance.new("TextButton")
+toggle.Size = UDim2.new(1, -20, 0, 45)
+toggle.Position = UDim2.fromOffset(10, 40)
+toggle.Text = "INSTANT KILL: OFF"
+toggle.TextScaled = true
+toggle.Font = Enum.Font.GothamBold
+toggle.BackgroundColor3 = Color3.fromRGB(170, 40, 40)
+toggle.TextColor3 = Color3.new(1, 1, 1)
+toggle.BorderSizePixel = 0
+toggle.Parent = panel
 
-    Instance.new("UICorner", obj).CornerRadius =
-        UDim.new(0, 8)
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 8)
+toggleCorner.Parent = toggle
 
-    return obj
-end
+-- Botão atacar
+local attack = Instance.new("TextButton")
+attack.Size = UDim2.new(1, -20, 0, 45)
+attack.Position = UDim2.fromOffset(10, 90)
+attack.Text = "ATACAR"
+attack.TextScaled = true
+attack.Font = Enum.Font.GothamBold
+attack.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
+attack.TextColor3 = Color3.new(1, 1, 1)
+attack.BorderSizePixel = 0
+attack.Parent = panel
 
-label("ANTI-ATTACK", 8, 28)
+local attackCorner = Instance.new("UICorner")
+attackCorner.CornerRadius = UDim.new(0, 8)
+attackCorner.Parent = attack
 
-local status = label(
-    "PROTEÇÃO: ATIVADA", 36, 23,
-    Color3.fromRGB(80, 220, 130)
-)
+-- Texto "by Caos"
+local credit = Instance.new("TextLabel")
+credit.Size = UDim2.fromOffset(220, 25)
+credit.Position = UDim2.new(0, 0, 1, 5)
+credit.BackgroundTransparency = 1
+credit.Text = "by Caos"
+credit.TextColor3 = Color3.fromRGB(255, 0, 0)
+credit.TextScaled = true
+credit.Font = Enum.Font.Gotham
+credit.Parent = panel
 
-local toggle = button(
-    "DESATIVAR PROTEÇÃO", 65,
-    Color3.fromRGB(35, 145, 85)
-)
+-- Ativar/desativar
+toggle.MouseButton1Click:Connect(function()
+	enabled = not enabled
 
-local alerts = button(
-    "DESATIVAR ALERTAS", 109,
-    Color3.fromRGB(70, 90, 150)
-)
-
-local close = button(
-    "OCULTAR PAINEL", 153,
-    Color3.fromRGB(155, 55, 65)
-)
-
-local reopen = Instance.new("TextButton")
-reopen.Name = "ReabrirAntiAttack"
-reopen.Size = UDim2.fromOffset(145, 40)
-reopen.Position = UDim2.new(0, 15, 0.5, 0)
-reopen.BackgroundColor3 = Color3.fromRGB(35, 145, 85)
-reopen.TextColor3 = Color3.new(1, 1, 1)
-reopen.Text = "ABRIR ANTI-ATTACK"
-reopen.Font = Enum.Font.GothamBold
-reopen.TextScaled = true
-reopen.Visible = false
-reopen.Parent = gui
-
-Instance.new("UICorner", reopen).CornerRadius =
-    UDim.new(0, 8)
-
-toggle.Activated:Connect(function()
-    protectionOn = not protectionOn
-
-    toggle.Text = protectionOn
-        and "DESATIVAR PROTEÇÃO"
-        or "ATIVAR PROTEÇÃO"
-
-    toggle.BackgroundColor3 = protectionOn
-        and Color3.fromRGB(35, 145, 85)
-        or Color3.fromRGB(155, 55, 65)
-
-    status.Text = protectionOn
-        and "PROTEÇÃO: ATIVADA"
-        or "PROTEÇÃO: DESATIVADA"
-
-    status.TextColor3 = protectionOn
-        and Color3.fromRGB(80, 220, 130)
-        or Color3.fromRGB(255, 100, 100)
-
-    event:FireServer("ToggleProtection", protectionOn)
+	if enabled then
+		toggle.Text = "INSTANT KILL: ON"
+		toggle.BackgroundColor3 = Color3.fromRGB(40, 170, 70)
+	else
+		toggle.Text = "INSTANT KILL: OFF"
+		toggle.BackgroundColor3 = Color3.fromRGB(170, 40, 40)
+	end
 end)
 
-alerts.Activated:Connect(function()
-    alertsOn = not alertsOn
+-- Ataque
+attack.MouseButton1Click:Connect(function()
+	if not enabled then return end
 
-    alerts.Text = alertsOn
-        and "DESATIVAR ALERTAS"
-        or "ATIVAR ALERTAS"
+	local now = os.clock()
+	if now - lastAttack < COOLDOWN then return end
+	lastAttack = now
 
-    alerts.BackgroundColor3 = alertsOn
-        and Color3.fromRGB(70, 90, 150)
-        or Color3.fromRGB(90, 90, 90)
+	local character = player.Character
+	if not character then return end
+
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	for _, target in ipairs(Players:GetPlayers()) do
+		if target ~= player then
+			local targetCharacter = target.Character
+			local humanoid = targetCharacter
+				and targetCharacter:FindFirstChildOfClass("Humanoid")
+			local targetRoot = targetCharacter
+				and targetCharacter:FindFirstChild("HumanoidRootPart")
+
+			if humanoid and targetRoot and humanoid.Health > 0 then
+				local distance =
+					(targetRoot.Position - root.Position).Magnitude
+
+				if distance <= RANGE then
+					humanoid.Health = 0
+				end
+			end
+		end
+	end
 end)
 
-close.Activated:Connect(function()
-    panel.Visible = false
-    reopen.Visible = true
-end)
+-- =====================================================
+-- SISTEMA PARA ARRASTAR O PAINEL
+-- =====================================================
 
-reopen.Activated:Connect(function()
-    panel.Visible = true
-    reopen.Visible = false
-end)
+local UserInputService = game:GetService("UserInputService")
 
-event.OnClientEvent:Connect(function(action, state)
-    if action == "ProtectionStatus" then
-        status.Text = state
-            and "PROTEÇÃO: ATIVADA"
-            or "PROTEÇÃO: DESATIVADA"
-    elseif action == "SuspiciousAttack" and alertsOn then
-        status.Text = "ALERTA: ATAQUE SUSPEITO"
-        status.TextColor3 = Color3.fromRGB(255, 90, 70)
-    end
-end)
-
--- Arrastar painel com mouse ou toque
 local dragging = false
 local dragStart
 local startPosition
-local dragInput
+
+local function updateDrag(input)
+	local delta = input.Position - dragStart
+
+	panel.Position = UDim2.new(
+		startPosition.X.Scale,
+		startPosition.X.Offset + delta.X,
+		startPosition.Y.Scale,
+		startPosition.Y.Offset + delta.Y
+	)
+end
 
 panel.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
 
-        dragging = true
-        dragStart = input.Position
-        startPosition = panel.Position
-        dragInput = input
-    end
+		dragging = true
+		dragStart = input.Position
+		startPosition = panel.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if dragging and (
-        input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch
-    ) then
-        local delta = input.Position - dragStart
-
-        panel.Position = UDim2.new(
-            startPosition.X.Scale,
-            startPosition.X.Offset + delta.X,
-            startPosition.Y.Scale,
-            startPosition.Y.Offset + delta.Y
-        )
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input == dragInput then
-        dragging = false
-        dragInput = nil
-    end
+	if dragging and (
+		input.UserInputType == Enum.UserInputType.MouseMovement
+		or input.UserInputType == Enum.UserInputType.Touch
+	) then
+		updateDrag(input)
+	end
 end)
